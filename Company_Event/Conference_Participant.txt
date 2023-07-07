@@ -1,0 +1,127 @@
+
+import requests
+import re
+from bs4 import BeautifulSoup
+from tabulate import tabulate
+
+class LocationEvent:
+    def __init__(self, title, link, event_score):
+        self.title = title
+        self.link = link
+        self.date = self.get_date()
+        self.event_score = event_score
+
+    def get_date(self):
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.93 Safari/537.36"
+        }
+        try:
+            response = requests.get(self.link, headers=headers)
+            response.raise_for_status()
+
+            soup = BeautifulSoup(response.text, "html.parser")
+
+            # Check different HTML structures and patterns to extract the date
+            date = self.extract_date_from_html(soup)
+            if not date:
+                date = self.extract_date_from_text(response.text)
+
+            return date
+        except requests.exceptions.HTTPError:
+            # Handle the HTTPError here
+            print(f"Error accessing URL: {self.link}")
+            return None
+
+    def extract_date_from_html(self, soup):
+        date = None
+
+        # Check specific HTML structures and keywords to extract the date
+        # Customize this method based on the HTML structure of the date information on the website
+        date_element = soup.find("span", class_="date")
+        if date_element:
+            date_text = date_element.get_text(strip=True)
+            date = self.parse_date(date_text)
+
+        return date
+
+    def extract_date_from_text(self, text):
+        date = None
+
+        # Use regular expressions to extract date patterns from the text
+        patterns = [
+            r"\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?) \d{1,2},? \d{4}\b",
+            r"\b\d{1,2}\.\d{1,2}\.\d{2}\b",  # Modified pattern to capture date in "09.14.21" format
+        ]
+
+        for pattern in patterns:
+            match = re.search(pattern, text)
+            if match:
+                date_text = match.group()
+                date = self.parse_date(date_text)
+                break
+
+        return date
+
+    def parse_date(self, date_text):
+        # Customize the date parsing based on the specific format of the dates
+        # For example, you can use libraries like datetime to parse and format the dates
+        return date_text
+
+def score_event(title, keywords, company_name):
+    event_score = 3
+
+    if any(keyword.lower() in title.lower() for keyword in keywords):
+        event_score = 1
+
+    if company_name.lower() in title.lower() and event_score > 0:
+        event_score += 0
+
+    return event_score
+
+def rate_event(score):
+    if score == 3:
+        return "High"
+    elif score == 1:
+        return "Medium"
+    else:
+        return "Low"
+
+def search_events(company_name, keywords):
+    events = []
+
+    for page in range(0, 21, 10):  # Adjust the range to specify the number of pages to scrape
+        search_query = f"Search for {company_name} and AI and (event OR seminar OR Conference OR workshop)"
+        url = f"https://www.google.com/search?q={search_query}&start={page}"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.93 Safari/537.36"
+        }
+
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        results = soup.select("div.g")
+
+        for result in results:
+            title = result.select_one("h3")
+            link = result.a["href"]
+
+            if title and link:
+                event_score = score_event(title.get_text(), keywords, company_name)
+                event = LocationEvent(title.get_text(), link, event_score)
+                events.append(event)
+
+    return events
+
+company = input("Enter the company name: ")
+keywords = ["event", "seminar", "conference", "workshop", "training"]
+
+events = search_events(company, keywords)
+
+# Print the events
+event_data = [[event.title, event.link, event.date, event.event_score, rate_event(event.event_score)] for event in events]
+table = tabulate(event_data, headers=["Title", "Link", "Date", "Event Score", "Rating"], tablefmt="pretty")
+print(table)
+
+
