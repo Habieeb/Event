@@ -1,4 +1,3 @@
-
 import requests
 import re
 from bs4 import BeautifulSoup
@@ -16,7 +15,7 @@ class LocationEvent:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.93 Safari/537.36"
         }
         try:
-            response = requests.get(self.link, headers=headers)
+            response = requests.get(self.link, headers=headers, verify=True)
             response.raise_for_status()
 
             soup = BeautifulSoup(response.text, "html.parser")
