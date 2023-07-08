@@ -67,13 +67,13 @@ class LocationEvent:
         return date_text
 
 def score_event(title, keywords, company_name):
-    event_score = 3
+    event_score = 0
 
     if any(keyword.lower() in title.lower() for keyword in keywords):
         event_score = 1
 
-    if company_name.lower() in title.lower() and event_score > 0:
-        event_score += 0
+    if company_name.lower() in title.lower():
+        event_score = 3
 
     return event_score
 
@@ -122,5 +122,4 @@ events = search_events(company, keywords)
 event_data = [[event.title, event.link, event.date, event.event_score, rate_event(event.event_score)] for event in events]
 table = tabulate(event_data, headers=["Title", "Link", "Date", "Event Score", "Rating"], tablefmt="pretty")
 print(table)
-
 
